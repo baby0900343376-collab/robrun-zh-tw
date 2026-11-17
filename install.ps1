@@ -76,7 +76,10 @@ function Install-PrivatePython {
         try { Invoke-WebRequest -UseBasicParsing -Uri 'https://bootstrap.pypa.io/get-pip.py' -OutFile $getPip }
         catch { Show-Err "下載 pip 失敗：$($_.Exception.Message)"; return $null }
         & $py $getPip --disable-pip-version-check --no-warn-script-location 2>&1 | ForEach-Object { Write-Log "get-pip: $_" }
-        & $py -m pip install --disable-pip-version-check --no-warn-script-location -r $Reqs 2>&1 | ForEach-Object { Write-Log "pip: $_" }
+        # 內嵌版 Python 會忽略 PYTHONPATH，pip 的隔離建置找不到 setuptools，
+        # 所以先裝好 setuptools，再關掉隔離建置（tpk_ar 只有原始碼包）
+        & $py -m pip install --disable-pip-version-check --no-warn-script-location setuptools wheel 2>&1 | ForEach-Object { Write-Log "pip: $_" }
+        & $py -m pip install --disable-pip-version-check --no-warn-script-location --no-build-isolation -r $Reqs 2>&1 | ForEach-Object { Write-Log "pip: $_" }
     }
     if ($LASTEXITCODE -ne 0) { Show-Err '安裝相依套件失敗'; return $null }
     & $py -c 'import UnityPy, numpy, PIL' 2>&1 | ForEach-Object { Write-Log "check: $_" }
